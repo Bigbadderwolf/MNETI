@@ -1,0 +1,20 @@
+[package]
+name        = "mneti-vault-registry"
+version     = "0.2.0"
+description = "MNETI Vault Registry — master registry for all vault types"
+edition     = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name       = "mneti_vault_registry"
+
+[features]
+idl-build = ["anchor-lang/idl-build"]
+no-entrypoint  = []
+no-idl         = []
+no-log-ix-name = []
+cpi            = ["no-entrypoint"]
+default        = []
+
+[dependencies]
+anchor-lang = { version = "0.30.1", features = ["init-if-needed"] }

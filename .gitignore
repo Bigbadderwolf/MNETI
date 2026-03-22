@@ -1,0 +1,81 @@
+# Rust / Cargo
+target/
+**/target/
+Cargo.lock
+**/*.rs.bk
+*.rs.bk
+
+# Node.js
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+.pnpm-debug.log*
+
+# Anchor
+.anchor/
+.anchor/program-logs/
+.anchor/.programs/
+
+# Build outputs
+dist/
+build/
+lib/
+out/
+
+# TypeScript
+*.tsbuildinfo
+.tsbuildinfo
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+# OS files
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Solana specific
+*.keypair
+*.json.key
+id.json
+test-ledger/
+ledger/
+
+# Program keypairs (keep these if you want consistent deployment addresses)
+# Uncomment the next line if you want to ignore all keypairs
+# target/deploy/*.json
+
+# Test artifacts
+coverage/
+.nyc_output/
+
+# Logs
+logs/
+*.log
+
+# Misc
+.cache/
+temp/
+tmp/
+
+# Circuit artifacts (if you have circuits)
+circuits/build/
+circuits/out/
+circuits/*.r1cs
+circuits/*.wasm
+circuits/*.zkey

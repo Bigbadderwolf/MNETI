@@ -10,12 +10,14 @@ mneti_rbac           = "6YxDrhp2pwSTmPWdPuCobwTvtrB3YuivKRdc1A7ypFLB"
 mneti_vault_registry = "GirQCGWXDnhLC6KZxEGuFmY38nZMfVWTg7L8QgFU9Yhp"
 mneti_kesh           = "AuTWVK7aWU1RZ2fESWmaWX1oPExAtqNMmJ8m8TerXXMR"
 mneti_oracle         = "4XQ2yp1pxQsypbAQposX1a8jLzFZFbjar28Sf7ruiSRU"
+    mneti_compliance     = "7D5hBC1HhbDa6eahWFeVz79EPGK56v7nxgSCzWqTCPP6"
 
 [programs.devnet]
 mneti_rbac           = "6YxDrhp2pwSTmPWdPuCobwTvtrB3YuivKRdc1A7ypFLB"
 mneti_vault_registry = "GirQCGWXDnhLC6KZxEGuFmY38nZMfVWTg7L8QgFU9Yhp"
 mneti_kesh           = "AuTWVK7aWU1RZ2fESWmaWX1oPExAtqNMmJ8m8TerXXMR"
 mneti_oracle         = "4XQ2yp1pxQsypbAQposX1a8jLzFZFbjar28Sf7ruiSRU"
+    mneti_compliance     = "7D5hBC1HhbDa6eahWFeVz79EPGK56v7nxgSCzWqTCPP6"
 
 [registry]
 url = "https://api.apr.dev"

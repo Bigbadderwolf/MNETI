@@ -1,0 +1,64 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# MNETI Phase 6 — Configuration Patches
+# Apply these changes to your existing project files.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ───────────────────────────────────────────────────────────────────────────────
+# 1. ROOT Cargo.toml  — add two lines to [workspace] members
+# ───────────────────────────────────────────────────────────────────────────────
+# Open: MNETI/Cargo.toml
+# Find the [workspace] members list and add:
+#
+# [workspace]
+# members = [
+#     "programs/mneti-rbac",
+#     "programs/mneti-vault-registry",
+#     "programs/mneti-kesh",
+#     "programs/mneti-oracle",
+#     "programs/mneti-compliance",
+#     "programs/mneti-vault",
+#     "programs/mneti-payments",       ← ADD THIS
+#     "programs/mneti-travel-rule",    ← ADD THIS
+# ]
+
+# ───────────────────────────────────────────────────────────────────────────────
+# 2. Anchor.toml — add two lines under [programs.localnet]
+# ───────────────────────────────────────────────────────────────────────────────
+# Open: MNETI/Anchor.toml
+# Under [programs.localnet] add:
+#
+# mneti_payments    = "PAY6mnetiXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+# mneti_travel_rule = "TRL6mnetiXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+#
+# Replace with real IDs after: anchor build && anchor keys list
+
+# ───────────────────────────────────────────────────────────────────────────────
+# 3. backend/.env — append these variables
+# ───────────────────────────────────────────────────────────────────────────────
+PAYMENTS_PROGRAM_ID=PAY6mnetiXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+TRAVEL_RULE_PROGRAM_ID=TRL6mnetiXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+AML_DB_PATH=./aml_screening.db
+PAYROLL_DB_PATH=./payroll_crank.db
+PAYROLL_CRANK_SCHEDULE=*/60 * * * * *
+CHAINALYSIS_API_KEY=
+SANCTIONS_API_KEY=
+INFURA_IPFS_PROJECT_ID=
+INFURA_IPFS_SECRET=
+PINATA_JWT=
+FEE_COLLECTOR_ATA=REPLACE_WITH_FEE_COLLECTOR_KESH_ATA
+
+# ───────────────────────────────────────────────────────────────────────────────
+# 4. backend/src/index.ts — add these imports and startup calls
+# ───────────────────────────────────────────────────────────────────────────────
+# At top of file add imports:
+#
+#   import paymentsRoutes    from "./routes/payments";
+#   import complianceRoutes  from "./routes/compliance";
+#   import { startPayrollCrank } from "./cranks/payroll_crank";
+#
+# In app/Express setup add routes:
+#   app.use("/api/payments",    paymentsRoutes);
+#   app.use("/api/compliance",  complianceRoutes);
+#
+# In main() startup add:
+#   startPayrollCrank(connection, paymentsProgram, operatorKeypair, keshMint, feeCollectorAta);

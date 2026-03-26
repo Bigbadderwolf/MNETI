@@ -1,0 +1,12 @@
+pub const ORACLE_REGISTRY_SEED:  &[u8] = b"oracle_registry";
+pub const PRICE_FEED_SEED:       &[u8] = b"price_feed";
+pub const MAX_PRICE_AGE_SECONDS: i64   = 60;
+pub const MAX_DEVIATION_BPS:     u64   = 50;
+pub const BPS_DENOMINATOR:       u64   = 10_000;
+pub const TWAP_BUFFER_SIZE:      usize = 10;
+pub const FEED_KES_USD:          u8    = 0;
+pub const FEED_TBILL_YIELD:      u8    = 1;
+pub const FEED_XAU_USD:          u8    = 2;
+pub const FEED_XAG_USD:          u8    = 3;
+pub const FEED_USD_KES:          u8    = 4;
+pub const PRICE_SCALE:           u64   = 1_000_000;

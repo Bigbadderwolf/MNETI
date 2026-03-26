@@ -1,0 +1,47 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# MNETI Anchor.toml — Phase 5 Addition
+#
+# ADD the following under [programs.localnet] in your existing Anchor.toml:
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# [programs.localnet]
+# mneti_rbac = "6YxDrhp2pwSTmPWdPuCobwTvtrB3YuivKRdc1A7ypFLB"
+# mneti_vault_registry = "GirQCGWXDnhLC6KZxEGuFmY38nZMfVWTg7L8QgFU9Yhp"
+# mneti_kesh = "AuTWVK7aWU1RZ2fESWmaWX1oPExAtqNMmJ8m8TerXXMR"
+# mneti_oracle = "4XQ2yp1pxQsypbAQposX1a8jLzFZFbjar28Sf7ruiSRU"
+# mneti_compliance = "PLACEHOLDER_COMPLIANCE"
+# mneti_vault = "Vau1tSMARTmneti5Ph4seXXXXXXXXXXXXXXXXXXXXXX"   ← ADD THIS
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# ADD the following test script entry under [[test.validator.clone]] if needed:
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# [[test]]
+# script = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/phase5.test.ts"
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# NOTE: Replace "Vau1tSMARTmneti5Ph4seXXXXXXXXXXXXXXXXXXXXXX" with the actual
+# program ID after running: anchor build && anchor deploy
+# ─────────────────────────────────────────────────────────────────────────────
+
+[features]
+seeds = false
+skip-lint = false
+
+[programs.localnet]
+mneti_rbac = "6YxDrhp2pwSTmPWdPuCobwTvtrB3YuivKRdc1A7ypFLB"
+mneti_vault_registry = "GirQCGWXDnhLC6KZxEGuFmY38nZMfVWTg7L8QgFU9Yhp"
+mneti_kesh = "AuTWVK7aWU1RZ2fESWmaWX1oPExAtqNMmJ8m8TerXXMR"
+mneti_oracle = "4XQ2yp1pxQsypbAQposX1a8jLzFZFbjar28Sf7ruiSRU"
+mneti_compliance = "PLACEHOLDER_COMPLIANCE"
+mneti_vault = "Vau1tSMARTmneti5Ph4seXXXXXXXXXXXXXXXXXXXXXX"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/*.test.ts"

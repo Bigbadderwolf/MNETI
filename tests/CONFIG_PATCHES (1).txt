@@ -1,0 +1,58 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# MNETI Phase 7 — Configuration Patches
+# Apply these changes to your existing project files.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ───────────────────────────────────────────────────────────────────────────────
+# 1. ROOT Cargo.toml — add one line to [workspace] members
+# ───────────────────────────────────────────────────────────────────────────────
+# [workspace]
+# members = [
+#     "programs/mneti-rbac",
+#     "programs/mneti-vault-registry",
+#     "programs/mneti-kesh",
+#     "programs/mneti-oracle",
+#     "programs/mneti-compliance",
+#     "programs/mneti-vault",
+#     "programs/mneti-payments",
+#     "programs/mneti-travel-rule",
+#     "programs/mneti-remittance",     ← ADD THIS
+# ]
+
+# ───────────────────────────────────────────────────────────────────────────────
+# 2. Anchor.toml — add one line under [programs.localnet]
+# ───────────────────────────────────────────────────────────────────────────────
+# mneti_remittance = "REM7mnetiXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+# Replace with real ID after: anchor build && anchor keys list
+
+# ───────────────────────────────────────────────────────────────────────────────
+# 3. backend/.env — append these variables
+# ───────────────────────────────────────────────────────────────────────────────
+REMITTANCE_PROGRAM_ID=REM7mnetiXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+REMITTANCE_DB_PATH=./remittance_relay.db
+USDC_MINT=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+DARAJA_B2C_SHORTCODE=
+DARAJA_B2C_INITIATOR_PASSWORD=
+DARAJA_INITIATOR_NAME=MNETI_API
+DARAJA_B2C_RESULT_URL=https://api.mneti.io/api/remittance/b2c/result
+SIX_API_KEY=
+
+# ───────────────────────────────────────────────────────────────────────────────
+# 4. backend/src/index.ts — add these imports and startup calls
+# ───────────────────────────────────────────────────────────────────────────────
+# At top of file add imports:
+#
+#   import remittanceRoutes from "./routes/remittance";
+#   import { startRemittanceRelay, startRemittanceEventListener } from "./remittance/corridors/relay";
+#
+# In app/Express setup add route:
+#   app.use("/api/remittance", remittanceRoutes);
+#
+# In main() startup add:
+#   startRemittanceEventListener(connection, remittanceProgram);
+#   startRemittanceRelay(connection, remittanceProgram, operatorKeypair);
+
+# ───────────────────────────────────────────────────────────────────────────────
+# 5. One-time corridor initialization (run once after deploy)
+# ───────────────────────────────────────────────────────────────────────────────
+# ts-node scripts/init_corridors.ts

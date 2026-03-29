@@ -20,7 +20,7 @@ import {
   getWalletHistory,
   getOpenAlerts,
   resolveAlert,
-} from "../compliance/aml/screening";
+} from "../compliance/screening";
 import { logger } from "../utils/logger";
 
 const router = Router();
@@ -39,7 +39,7 @@ router.get("/stats", (_req: Request, res: Response) => {
 // ─── GET /api/compliance/alerts ───────────────────────────────────────────────
 router.get("/alerts", (req: Request, res: Response) => {
   try {
-    const limit  = parseInt(req.query.limit as string, 10) || 100;
+    const limit = parseInt(req.query.limit as string, 10) || 100;
     const alerts = getOpenAlerts(limit);
     res.json({ success: true, count: (alerts as any[]).length, alerts });
   } catch (err) {
@@ -52,7 +52,7 @@ router.get("/alerts", (req: Request, res: Response) => {
 router.get("/wallet/:wallet", (req: Request, res: Response) => {
   try {
     const { wallet } = req.params;
-    const limit  = parseInt(req.query.limit as string, 10) || 20;
+    const limit = parseInt(req.query.limit as string, 10) || 20;
     const history = getWalletHistory(wallet, limit);
     res.json({ success: true, wallet, count: (history as any[]).length, history });
   } catch (err) {
@@ -95,7 +95,7 @@ router.post("/screen", async (req: Request, res: Response) => {
 // ─── POST /api/compliance/alert/:id/resolve ───────────────────────────────────
 router.post("/alert/:id/resolve", (req: Request, res: Response) => {
   try {
-    const alertId    = parseInt(req.params.id, 10);
+    const alertId = parseInt(req.params.id, 10);
     const resolvedBy = req.body?.resolved_by || "compliance_officer";
 
     if (isNaN(alertId)) {
@@ -113,8 +113,8 @@ router.post("/alert/:id/resolve", (req: Request, res: Response) => {
 // ─── GET /api/compliance/health ───────────────────────────────────────────────
 router.get("/health", (_req: Request, res: Response) => {
   res.json({
-    success:   true,
-    service:   "mneti-compliance-aml",
+    success: true,
+    service: "mneti-compliance-aml",
     timestamp: new Date().toISOString(),
   });
 });

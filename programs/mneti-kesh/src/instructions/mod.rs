@@ -113,6 +113,131 @@ pub fn mint_kesh(ctx: Context<MintKesh>, kes_amount: u64, mpesa_ref: String) -> 
     Ok(())
 }
 
+pub fn create_bridge_deposit(ctx: Context<CreateBridgeDeposit>, kes_amount: u64, mpesa_ref: String) -> Result<()> {
+    let now   = Clock::get()?.unix_timestamp;
+    let state = &mut ctx.accounts.protocol_state;
+    let ws    = &mut ctx.accounts.wallet_state;
+    
+    // Validation checks
+    require!(!state.is_paused, KeshError::ProtocolPaused);
+    require!(kes_amount >= MIN_DEPOSIT_KES, KeshError::BelowMinimumAmount);
+    require!(!ws.is_frozen, KeshError::WalletFrozen);
+    require!(mpesa_ref.len() > 0 && mpesa_ref.len() <= 20, KeshError::InvalidMpesaReference);
+    require!(now - state.last_oracle_update <= MAX_ORACLE_AGE_SECONDS, KeshError::StalePriceOracle);
+    
+    // Calculate fee and amounts
+    let fee = kes_amount
+        .checked_mul(state.fee_bps as u64).ok_or(KeshError::ArithmeticOverflow)?
+        .checked_div(BPS_DENOMINATOR).ok_or(KeshError::ArithmeticOverflow)?;
+    let kesh_to_mint = kes_amount.checked_sub(fee).ok_or(KeshError::ArithmeticOverflow)?;
+    
+    // Check daily limits
+    ws.reset_daily_volume_if_needed(now);
+    let usd_cents = kes_amount
+        .checked_mul(100_000_000).ok_or(KeshError::ArithmeticOverflow)?
+        .checked_div(state.kes_usd_rate).ok_or(KeshError::ArithmeticOverflow)?;
+    require!(
+        ws.daily_volume_usd_cents.checked_add(usd_cents).ok_or(KeshError::ArithmeticOverflow)?
+            <= ws.daily_limit_usd_cents(),
+        KeshError::DailyLimitExceeded
+    );
+    
+    // Create the bridge deposit record
+    let deposit = &mut ctx.accounts.bridge_deposit;
+    deposit.mpesa_ref    = mpesa_ref.clone();
+    deposit.wallet       = ctx.accounts.recipient.key();
+    deposit.kes_amount   = kes_amount;
+    deposit.kesh_minted  = kesh_to_mint;
+    deposit.fee_charged  = fee;
+    deposit.rate_at_mint = state.kes_usd_rate;
+    deposit.operator     = ctx.accounts.operator.key();
+    deposit.created_at   = now;
+    deposit.bump         = ctx.bumps.bridge_deposit;
+    
+    // Mark as pending mint
+    deposit.is_minted = false;
+    
+    emit!(BridgeDepositCreated { 
+        wallet: ctx.accounts.recipient.key(), 
+        mpesa_ref: mpesa_ref.clone(),
+        kes_amount, 
+        kesh_to_mint, 
+        rate_used: state.kes_usd_rate,
+        fee_charged: fee, 
+        timestamp: now 
+    });
+    
+    msg!("Bridge deposit created: {} KES for {} KESH", kes_amount, kesh_to_mint);
+    Ok(())
+}
+
+pub fn execute_mint(ctx: Context<ExecuteMint>, mpesa_ref: String) -> Result<()> {
+    let now   = Clock::get()?.unix_timestamp;
+    let state = &mut ctx.accounts.protocol_state;
+    let ws    = &mut ctx.accounts.wallet_state;
+    let deposit = &mut ctx.accounts.bridge_deposit;
+    
+    // Validation
+    require!(!state.is_paused, KeshError::ProtocolPaused);
+    require!(!deposit.is_minted, KeshError::AlreadyMinted);
+    require!(deposit.mpesa_ref == mpesa_ref, KeshError::InvalidMpesaReference);
+    
+    // Calculate USD value for daily limits
+    let usd_cents = deposit.kes_amount
+        .checked_mul(100_000_000).ok_or(KeshError::ArithmeticOverflow)?
+        .checked_div(state.kes_usd_rate).ok_or(KeshError::ArithmeticOverflow)?;
+    
+    // Update daily volume and wallet stats
+    ws.reset_daily_volume_if_needed(now);
+    ws.daily_volume_usd_cents  = ws.daily_volume_usd_cents.checked_add(usd_cents).ok_or(KeshError::ArithmeticOverflow)?;
+    ws.lifetime_kesh_received  = ws.lifetime_kesh_received.checked_add(deposit.kesh_minted).ok_or(KeshError::ArithmeticOverflow)?;
+    ws.last_tx_at = now;
+    if ws.first_tx_at == 0 { ws.first_tx_at = now; }
+    
+    // Mint KESH to recipient
+    let seeds  = &[MINT_AUTHORITY_SEED, &[ctx.bumps.mint_authority]];
+    let signer = &[&seeds[..]];
+    token::mint_to(CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+        MintTo { 
+            mint: ctx.accounts.kesh_mint.to_account_info(),
+            to: ctx.accounts.recipient_ata.to_account_info(),
+            authority: ctx.accounts.mint_authority.to_account_info() 
+        }, signer), deposit.kesh_minted)?;
+    
+    // Mint fee to fee collector
+    if deposit.fee_charged > 0 {
+        token::mint_to(CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            MintTo { 
+                mint: ctx.accounts.kesh_mint.to_account_info(),
+                to: ctx.accounts.fee_collector_ata.to_account_info(),
+                authority: ctx.accounts.mint_authority.to_account_info() 
+            }, signer), deposit.fee_charged)?;
+    }
+    
+    // Update protocol state
+    state.total_kesh_supply    = state.total_kesh_supply.checked_add(deposit.kes_amount).ok_or(KeshError::ArithmeticOverflow)?;
+    state.total_kes_collateral = state.total_kes_collateral.checked_add(deposit.kes_amount).ok_or(KeshError::ArithmeticOverflow)?;
+    state.total_fees_collected = state.total_fees_collected.checked_add(deposit.fee_charged).ok_or(KeshError::ArithmeticOverflow)?;
+    
+    // Mark as minted
+    deposit.is_minted = true;
+    
+    emit!(KeshMinted { 
+        wallet: ctx.accounts.recipient.key(), 
+        mpesa_ref: mpesa_ref.clone(),
+        kes_amount: deposit.kes_amount, 
+        kesh_minted: deposit.kesh_minted, 
+        rate_used: state.kes_usd_rate,
+        fee_charged: deposit.fee_charged, 
+        timestamp: now 
+    });
+    
+    msg!("Minted {} KESH for {} KES", deposit.kesh_minted, deposit.kes_amount);
+    Ok(())
+}
+
 pub fn burn_kesh(ctx: Context<BurnKesh>, kesh_amount: u64) -> Result<()> {
     let now   = Clock::get()?.unix_timestamp;
     let state = &mut ctx.accounts.protocol_state;
@@ -257,6 +382,56 @@ pub struct UpdatePeg<'info> {
     pub protocol_state: Account<'info, ProtocolState>,
 }
 
+
+#[derive(Accounts)]
+#[instruction(kes_amount: u64, mpesa_ref: String)]
+pub struct CreateBridgeDeposit<'info> {
+    #[account(mut)]
+    pub operator: Signer<'info>,
+    /// CHECK: recipient wallet
+    pub recipient: UncheckedAccount<'info>,
+    #[account(mut, seeds = [PROTOCOL_STATE_SEED], bump = protocol_state.bump)]
+    pub protocol_state: Account<'info, ProtocolState>,
+    #[account(mut, seeds = [WALLET_STATE_SEED, recipient.key().as_ref()],
+        bump = wallet_state.bump)]
+    pub wallet_state: Account<'info, WalletState>,
+    #[account(init, payer = operator, space = BridgeDeposit::LEN,
+        seeds = [BRIDGE_DEPOSIT_SEED, mpesa_ref.as_bytes()], bump)]
+    pub bridge_deposit: Account<'info, BridgeDeposit>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+#[instruction(mpesa_ref: String)]
+pub struct ExecuteMint<'info> {
+    #[account(mut)]
+    pub operator: Signer<'info>,
+    /// CHECK: recipient wallet
+    pub recipient: UncheckedAccount<'info>,
+    /// CHECK: fee collector wallet
+    pub fee_collector: UncheckedAccount<'info>,
+    #[account(mut, seeds = [PROTOCOL_STATE_SEED], bump = protocol_state.bump)]
+    pub protocol_state: Account<'info, ProtocolState>,
+    #[account(mut, seeds = [b"kesh_mint"], bump)]
+    pub kesh_mint: Account<'info, Mint>,
+    /// CHECK: PDA mint authority
+    #[account(seeds = [MINT_AUTHORITY_SEED], bump)]
+    pub mint_authority: UncheckedAccount<'info>,
+    #[account(mut, seeds = [WALLET_STATE_SEED, recipient.key().as_ref()],
+        bump = wallet_state.bump)]
+    pub wallet_state: Account<'info, WalletState>,
+    #[account(mut, associated_token::mint = kesh_mint, associated_token::authority = recipient)]
+    pub recipient_ata: Account<'info, TokenAccount>,
+    #[account(mut, associated_token::mint = kesh_mint, associated_token::authority = fee_collector)]
+    pub fee_collector_ata: Account<'info, TokenAccount>,
+    #[account(mut, seeds = [BRIDGE_DEPOSIT_SEED, mpesa_ref.as_bytes()], bump)]
+    pub bridge_deposit: Account<'info, BridgeDeposit>,
+    pub token_program: Program<'info, Token>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
 
 #[derive(Accounts)]
 pub struct PauseProtocol<'info> {

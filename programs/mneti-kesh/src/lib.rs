@@ -23,8 +23,12 @@ pub mod mneti_kesh {
         instructions::init_wallet_state(ctx)
     }
 
-    pub fn mint_kesh(ctx: Context<MintKesh>, kes_amount: u64, mpesa_ref: String) -> Result<()> {
-        instructions::mint_kesh(ctx, kes_amount, mpesa_ref)
+    pub fn create_bridge_deposit(ctx: Context<CreateBridgeDeposit>, kes_amount: u64, mpesa_ref: String) -> Result<()> {
+        instructions::create_bridge_deposit(ctx, kes_amount, mpesa_ref)
+    }
+
+    pub fn execute_mint(ctx: Context<ExecuteMint>, mpesa_ref: String) -> Result<()> {
+        instructions::execute_mint(ctx, mpesa_ref)
     }
 
     pub fn burn_kesh(ctx: Context<BurnKesh>, kesh_amount: u64) -> Result<()> {

@@ -21,7 +21,7 @@
 import axios from "axios";
 import Database from "better-sqlite3";
 import path from "path";
-import { logger } from "../../utils/logger";
+import { logger } from "../utils/logger";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -46,19 +46,19 @@ export interface ScreeningRequest {
 }
 
 export interface ScreeningResult {
-  wallet:            string;
-  passed:            boolean;
-  risk_score:        number;   // 0–100
-  flags:             AmlFlag[];
-  screened_at:       number;   // unix timestamp
-  requires_review:   boolean;  // true = send to compliance officer queue
-  chainalysis_ref?:  string;   // Chainalysis request ID for audit trail
+  wallet: string;
+  passed: boolean;
+  risk_score: number;   // 0–100
+  flags: AmlFlag[];
+  screened_at: number;   // unix timestamp
+  requires_review: boolean;  // true = send to compliance officer queue
+  chainalysis_ref?: string;   // Chainalysis request ID for audit trail
 }
 
 export interface AmlFlag {
-  type:     AmlFlagType;
+  type: AmlFlagType;
   severity: "low" | "medium" | "high" | "critical";
-  detail:   string;
+  detail: string;
 }
 
 export type AmlFlagType =
@@ -72,15 +72,15 @@ export type AmlFlagType =
 // ─── Thresholds ───────────────────────────────────────────────────────────────
 
 /** Auto-block: score >= this value blocks the transaction entirely */
-const SCORE_BLOCK  = 80;
+const SCORE_BLOCK = 80;
 /** Review queue: score >= this value (and < SCORE_BLOCK) flags for human review */
 const SCORE_REVIEW = 50;
 
 /** FATF Travel Rule threshold in KESH units — KES 130,000 */
 const TR_THRESHOLD_KESH = 13_000_000n;
 /** Structuring: ≥ 3 sub-threshold transactions in a rolling 24h window */
-const STRUCT_COUNT  = 3;
-const WINDOW_SECS   = 24 * 3_600;
+const STRUCT_COUNT = 3;
+const WINDOW_SECS = 24 * 3_600;
 /** Velocity: total 24h volume per wallet */
 const VELOCITY_LIMIT_KESH = 50_000_000n; // KES 500,000
 
@@ -146,9 +146,9 @@ async function checkSanctions(wallet: string, phone?: string): Promise<AmlFlag[]
   // Local blocklist (always checked)
   if (BLOCKED_WALLETS.has(wallet)) {
     flags.push({
-      type:     "ofac_hit",
+      type: "ofac_hit",
       severity: "critical",
-      detail:   `Wallet ${wallet.slice(0, 8)}... matched OFAC SDN blocklist`,
+      detail: `Wallet ${wallet.slice(0, 8)}... matched OFAC SDN blocklist`,
     });
     return flags; // no need to continue if hard-blocked
   }
@@ -161,8 +161,8 @@ async function checkSanctions(wallet: string, phone?: string): Promise<AmlFlag[]
         "https://api.complyadvantage.com/searches",
         {
           search_term: phone,
-          fuzziness:   0.6,
-          filters:     { types: ["sanction", "pep"] },
+          fuzziness: 0.6,
+          filters: { types: ["sanction", "pep"] },
         },
         { headers: { Authorization: `Token ${apiKey}` }, timeout: 4_000 }
       );
@@ -173,9 +173,9 @@ async function checkSanctions(wallet: string, phone?: string): Promise<AmlFlag[]
           (h: any) => h.doc?.types?.includes("pep")
         );
         flags.push({
-          type:     isPep ? "pep_match" : "ofac_hit",
+          type: isPep ? "pep_match" : "ofac_hit",
           severity: "critical",
-          detail:   `Phone ${phone} matched ${hits} sanctions / PEP record(s)`,
+          detail: `Phone ${phone} matched ${hits} sanctions / PEP record(s)`,
         });
       }
     } catch (err) {
@@ -200,15 +200,15 @@ async function checkChainalysis(wallet: string): Promise<{ flags: AmlFlag[]; ref
       { headers: { Token: apiKey }, timeout: 5_000 }
     );
 
-    const risk:   string = resp.data?.risk        ?? "Unknown";
-    const ref:    string = resp.data?.requestId   ?? "";
-    const flags:  AmlFlag[] = [];
+    const risk: string = resp.data?.risk ?? "Unknown";
+    const ref: string = resp.data?.requestId ?? "";
+    const flags: AmlFlag[] = [];
 
     if (risk === "High" || risk === "Severe") {
       flags.push({
-        type:     "chainalysis_high_risk",
+        type: "chainalysis_high_risk",
         severity: risk === "Severe" ? "critical" : "high",
-        detail:   `Chainalysis KYT risk rating: ${risk}`,
+        detail: `Chainalysis KYT risk rating: ${risk}`,
       });
     }
 
@@ -227,7 +227,7 @@ async function checkChainalysis(wallet: string): Promise<{ flags: AmlFlag[]; ref
 function checkStructuring(wallet: string, amountKesh: bigint): AmlFlag[] {
   if (amountKesh >= TR_THRESHOLD_KESH) return []; // over-threshold txns are already screened
 
-  const db         = getDb();
+  const db = getDb();
   const windowStart = Math.floor(Date.now() / 1000) - WINDOW_SECS;
 
   const row = db.prepare(`
@@ -242,10 +242,10 @@ function checkStructuring(wallet: string, amountKesh: bigint): AmlFlag[] {
 
   if (row.cnt >= STRUCT_COUNT) {
     return [{
-      type:     "structuring_suspected",
+      type: "structuring_suspected",
       severity: "high",
-      detail:   `${row.cnt} sub-threshold transactions in 24 h ` +
-                `totalling KES ${(row.total / 100).toFixed(2)} — possible structuring`,
+      detail: `${row.cnt} sub-threshold transactions in 24 h ` +
+        `totalling KES ${(row.total / 100).toFixed(2)} — possible structuring`,
     }];
   }
   return [];
@@ -253,7 +253,7 @@ function checkStructuring(wallet: string, amountKesh: bigint): AmlFlag[] {
 
 // ─── Check 4: Velocity Breach ─────────────────────────────────────────────────
 function checkVelocity(wallet: string, amountKesh: bigint): AmlFlag[] {
-  const db         = getDb();
+  const db = getDb();
   const windowStart = Math.floor(Date.now() / 1000) - WINDOW_SECS;
 
   const row = db.prepare(`
@@ -265,10 +265,10 @@ function checkVelocity(wallet: string, amountKesh: bigint): AmlFlag[] {
   const total = BigInt(row?.total_24h ?? 0) + amountKesh;
   if (total > VELOCITY_LIMIT_KESH) {
     return [{
-      type:     "velocity_breach",
+      type: "velocity_breach",
       severity: "medium",
-      detail:   `24 h wallet volume KES ${(Number(total) / 100).toFixed(2)} ` +
-                `exceeds limit KES ${(Number(VELOCITY_LIMIT_KESH) / 100).toFixed(2)}`,
+      detail: `24 h wallet volume KES ${(Number(total) / 100).toFixed(2)} ` +
+        `exceeds limit KES ${(Number(VELOCITY_LIMIT_KESH) / 100).toFixed(2)}`,
     }];
   }
   return [];
@@ -284,8 +284,8 @@ function scoreFromFlags(flags: AmlFlag[]): number {
 export async function screenTransaction(
   req: ScreeningRequest
 ): Promise<ScreeningResult> {
-  const now  = Math.floor(Date.now() / 1000);
-  const db   = getDb();
+  const now = Math.floor(Date.now() / 1000);
+  const db = getDb();
 
   // Run async checks in parallel
   const [sanctionFlags, kytResult] = await Promise.all([
@@ -294,7 +294,7 @@ export async function screenTransaction(
   ]);
 
   // Run synchronous checks
-  const structFlags   = checkStructuring(req.wallet, req.amount_kesh);
+  const structFlags = checkStructuring(req.wallet, req.amount_kesh);
   const velocityFlags = checkVelocity(req.wallet, req.amount_kesh);
 
   const allFlags: AmlFlag[] = [
@@ -304,16 +304,16 @@ export async function screenTransaction(
     ...velocityFlags,
   ];
 
-  const riskScore     = scoreFromFlags(allFlags);
-  const passed        = riskScore < SCORE_BLOCK;
+  const riskScore = scoreFromFlags(allFlags);
+  const passed = riskScore < SCORE_BLOCK;
   const requiresReview = riskScore >= SCORE_REVIEW && riskScore < SCORE_BLOCK;
 
   const result: ScreeningResult = {
-    wallet:          req.wallet,
+    wallet: req.wallet,
     passed,
-    risk_score:      riskScore,
-    flags:           allFlags,
-    screened_at:     now,
+    risk_score: riskScore,
+    flags: allFlags,
+    screened_at: now,
     requires_review: requiresReview,
     chainalysis_ref: kytResult.ref,
   };
@@ -360,10 +360,10 @@ export async function screenTransaction(
 export function getAmlStats() {
   const db = getDb();
   return {
-    total_screened:        (db.prepare("SELECT COUNT(*) AS c FROM aml_screenings").get() as any).c,
-    total_blocked:         (db.prepare("SELECT COUNT(*) AS c FROM aml_screenings WHERE passed=0").get() as any).c,
-    total_pending_review:  (db.prepare("SELECT COUNT(*) AS c FROM aml_screenings WHERE requires_review=1").get() as any).c,
-    open_alerts:           (db.prepare("SELECT COUNT(*) AS c FROM aml_alerts WHERE resolved=0").get() as any).c,
+    total_screened: (db.prepare("SELECT COUNT(*) AS c FROM aml_screenings").get() as any).c,
+    total_blocked: (db.prepare("SELECT COUNT(*) AS c FROM aml_screenings WHERE passed=0").get() as any).c,
+    total_pending_review: (db.prepare("SELECT COUNT(*) AS c FROM aml_screenings WHERE requires_review=1").get() as any).c,
+    open_alerts: (db.prepare("SELECT COUNT(*) AS c FROM aml_alerts WHERE resolved=0").get() as any).c,
   };
 }
 
@@ -382,7 +382,7 @@ export function getOpenAlerts(limit = 100) {
 }
 
 export function resolveAlert(alertId: number, resolvedBy: string): void {
-  const db  = getDb();
+  const db = getDb();
   const now = Math.floor(Date.now() / 1000);
   db.prepare(
     "UPDATE aml_alerts SET resolved=1, resolved_by=?, resolved_at=? WHERE id=?"

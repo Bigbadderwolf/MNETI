@@ -169,12 +169,11 @@ async function fetchVaultsByDiscriminator(
 ): Promise<Array<{ pubkey: PublicKey; data: Buffer }>> {
   // Use getProgramAccounts with memcmp filter on discriminator
   // Anchor discriminator = sha256("account:<TypeName>")[0..8]
-  const { BorshAccountsCoder } = anchor;
-  const discriminator = BorshAccountsCoder.accountDiscriminator(discriminatorName);
+  const discriminator = anchor.utils.sha256.hash(`account:${discriminatorName}`).slice(0, 8);
 
   const accounts = await connection.getProgramAccounts(vaultProgramId, {
     filters: [
-      { memcmp: { offset: 0, bytes: anchor.utils.bytes.bs58.encode(discriminator) } },
+      { memcmp: { offset: 0, bytes: anchor.utils.bytes.bs58.encode(Buffer.from(discriminator, 'hex')) } },
     ],
   });
 

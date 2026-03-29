@@ -1,13 +1,13 @@
 [toolchain]
-anchor_version = "0.30.1"
+anchor_version = "0.29.0"
 [workspace]
 members = [
   "programs/mneti-compliance",
-  "programs/mneti-vault",
-  "programs/mneti-vault-registry",
-  "programs/mneti-oracle",
   "programs/mneti-kesh",
-  "programs/mneti-rbac"
+  "programs/mneti-oracle",
+  "programs/mneti-payments",
+  "programs/mneti-travel-rule",
+  "programs/mneti-remittance"
 ]
 
 [features]
@@ -15,8 +15,6 @@ seeds = true
 skip-lint = false
 
 [programs.localnet]
-mneti_rbac           = "6YxDrhp2pwSTmPWdPuCobwTvtrB3YuivKRdc1A7ypFLB"
-mneti_vault_registry = "GirQCGWXDnhLC6KZxEGuFmY38nZMfVWTg7L8QgFU9Yhp"
 mneti_kesh           = "AuTWVK7aWU1RZ2fESWmaWX1oPExAtqNMmJ8m8TerXXMR"
 mneti_oracle         = "4XQ2yp1pxQsypbAQposX1a8jLzFZFbjar28Sf7ruiSRU"
 mneti_compliance     = "7D5hBC1HhbDa6eahWFeVz79EPGK56v7nxgSCzWqTCPP6"
@@ -25,17 +23,18 @@ mneti_travel_rule = "TRL6mnetiXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 mneti_remittance = "REM7mnetiXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
 [programs.devnet]
-mneti_rbac           = "6YxDrhp2pwSTmPWdPuCobwTvtrB3YuivKRdc1A7ypFLB"
-mneti_vault_registry = "GirQCGWXDnhLC6KZxEGuFmY38nZMfVWTg7L8QgFU9Yhp"
-mneti_kesh           = "AuTWVK7aWU1RZ2fESWmaWX1oPExAtqNMmJ8m8TerXXMR"
-mneti_oracle         = "4XQ2yp1pxQsypbAQposX1a8jLzFZFbjar28Sf7ruiSRU"
-mneti_compliance     = "7D5hBC1HhbDa6eahWFeVz79EPGK56v7nxgSCzWqTCPP6"
+mneti_kesh        = "AuTWVK7aWU1RZ2fESWmaWX1oPExAtqNMmJ8m8TerXXMR"
+mneti_oracle      = "4XQ2yp1pxQsypbAQposX1a8jLzFZFbjar28Sf7ruiSRU"
+mneti_compliance  = "7D5hBC1HhbDa6eahWFeVz79EPGK56v7nxgSCzWqTCPP6"
+mneti_payments    = "PAY6mnetiXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+mneti_travel_rule = "TRL6mnetiXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+mneti_remittance  = "REM7mnetiXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet  = "~/.config/solana/id.json"
 
 [scripts]

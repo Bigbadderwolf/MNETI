@@ -23,7 +23,7 @@ try {
   relayKeypair = Keypair.generate();
 }
 
-export const relayWallet    = new anchor.Wallet(relayKeypair);
+export const relayWallet = new anchor.Wallet(relayKeypair);
 export const relayPublicKey = relayKeypair.publicKey;
 
 export const ORACLE_PROGRAM_ID = new PublicKey(
@@ -51,6 +51,28 @@ export function getPriceFeedPDA(feedType: number): [PublicKey, number] {
 export const FEED_TYPES = {
   KES_USD: 0, TBILL_YIELD: 1, XAU_USD: 2, XAG_USD: 3, USD_KES: 4
 } as const;
+
+// Missing functions that crank files need
+export function getSolanaConnection(): Connection {
+  return connection;
+}
+
+export function getCrankKeypair(): Keypair {
+  return relayKeypair;
+}
+
+export function getProgramId(programName: string): PublicKey {
+  const programIds: Record<string, string> = {
+    oracle: process.env.ORACLE_PROGRAM_ID || "11111111111111111111111111111111",
+    kesh: process.env.KESH_PROGRAM_ID || "11111111111111111111111111111111",
+    compliance: process.env.COMPLIANCE_PROGRAM_ID || "11111111111111111111111111111111",
+    payments: process.env.PAYMENTS_PROGRAM_ID || "11111111111111111111111111111111",
+    vault: process.env.VAULT_PROGRAM_ID || "11111111111111111111111111111111",
+    travel_rule: process.env.TRAVEL_RULE_PROGRAM_ID || "11111111111111111111111111111111"
+  };
+
+  return new PublicKey(programIds[programName] || "11111111111111111111111111111111");
+}
 
 logger.info(`Solana RPC: ${rpcUrl}`);
 logger.info(`Relay operator: ${relayPublicKey.toBase58()}`);

@@ -1,0 +1,14 @@
+{
+  "extends": "@react-native/typescript-config/tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@screens/*":  ["src/screens/*"],
+      "@services/*": ["src/services/*"],
+      "@store/*":    ["src/store/*"],
+      "@navigation/*":["src/navigation/*"]
+    }
+  },
+  "include": ["src", "mnt/user-data/outputs/MNETI_PHASE8_FINAL/app/index.js"]
+}

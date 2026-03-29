@@ -20,7 +20,7 @@ import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import cron from "node-cron";
 import Database from "better-sqlite3";
 import path from "path";
-import { logger } from "../../utils/logger";
+import { logger } from "../utils/logger";
 
 // ─── PDA helpers (must match mneti-payments constants.rs) ────────────────────
 
@@ -79,11 +79,11 @@ async function fetchDueSchedules(
   programId: PublicKey,
   now: number
 ): Promise<Array<{ pubkey: PublicKey; employer: PublicKey; vault: PublicKey; name: string; nextRunTs: number }>> {
-  const discriminator = anchor.BorshAccountsCoder.accountDiscriminator("PayrollSchedule");
+  const discriminator = anchor.utils.sha256.hash(`account:PayrollSchedule`).slice(0, 8);
 
   const accounts = await connection.getProgramAccounts(programId, {
     filters: [
-      { memcmp: { offset: 0, bytes: anchor.utils.bytes.bs58.encode(discriminator) } },
+      { memcmp: { offset: 0, bytes: anchor.utils.bytes.bs58.encode(Buffer.from(discriminator, 'hex')) } },
     ],
   });
 
@@ -100,13 +100,13 @@ async function fetchDueSchedules(
       // After name: status(1), interval(8), next_run_ts(8)
       if (data.length < 90) continue;
 
-      const employer    = new PublicKey(data.slice(8, 40));
-      const vault       = new PublicKey(data.slice(40, 72));
-      const nameLen     = data.readUInt32LE(72);
+      const employer = new PublicKey(data.slice(8, 40));
+      const vault = new PublicKey(data.slice(40, 72));
+      const nameLen = data.readUInt32LE(72);
       if (data.length < 76 + nameLen + 17) continue;
-      const name        = data.slice(76, 76 + nameLen).toString("utf8");
-      const statusByte  = data[76 + nameLen];
-      const nextRunTs   = Number(data.readBigInt64LE(76 + nameLen + 1 + 8)); // skip status(1) + interval(8)
+      const name = data.slice(76, 76 + nameLen).toString("utf8");
+      const statusByte = data[76 + nameLen];
+      const nextRunTs = Number(data.readBigInt64LE(76 + nameLen + 1 + 8)); // skip status(1) + interval(8)
 
       if (statusByte === 0 && nextRunTs <= now) {
         due.push({ pubkey, employer, vault, name, nextRunTs });
@@ -126,11 +126,11 @@ async function fetchActiveRecipients(
   programId: PublicKey,
   schedulePubkey: PublicKey
 ): Promise<Array<{ pubkey: PublicKey; wallet: PublicKey; amountPerPeriod: bigint }>> {
-  const discriminator = anchor.BorshAccountsCoder.accountDiscriminator("PayrollRecipient");
+  const discriminator = anchor.utils.sha256.hash(`account:PayrollRecipient`).slice(0, 8);
 
   const accounts = await connection.getProgramAccounts(programId, {
     filters: [
-      { memcmp: { offset: 0,  bytes: anchor.utils.bytes.bs58.encode(discriminator) } },
+      { memcmp: { offset: 0, bytes: anchor.utils.bytes.bs58.encode(Buffer.from(discriminator, 'hex')) } },
       { memcmp: { offset: 40, bytes: schedulePubkey.toBase58() } }, // schedule field at offset 40
     ],
   });
@@ -147,8 +147,8 @@ async function fetchActiveRecipients(
       // [76+nameLen+1..76+nameLen+9] amount_per_period (u64)
       if (data.length < 82) continue;
 
-      const wallet   = new PublicKey(data.slice(8, 40));
-      const nameLen  = data.readUInt32LE(72);
+      const wallet = new PublicKey(data.slice(8, 40));
+      const nameLen = data.readUInt32LE(72);
       if (data.length < 76 + nameLen + 17) continue;
       const isActive = data[76 + nameLen + 1 + 8 + 8 + 8] !== 0; // after name+amount+total_received+last_paid
       // Simplified: read is_active from last known byte position
@@ -175,7 +175,7 @@ async function runPayrollCrank(
   feeCollectorAta: PublicKey
 ): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
-  const db  = getDb();
+  const db = getDb();
 
   logger.info("[PayrollCrank] Checking for due payroll schedules...");
 
@@ -201,7 +201,7 @@ async function runPayrollCrank(
     }
 
     let recipientsPaid = 0;
-    let totalGross     = 0n;
+    let totalGross = 0n;
 
     const vaultTokenAta = await getAssociatedTokenAddress(keshMint, schedule.vault);
 
@@ -212,14 +212,14 @@ async function runPayrollCrank(
         await program.methods
           .executePayrollRecipient()
           .accounts({
-            employer:              schedule.employer,
-            schedule:              schedule.pubkey,
-            recipient:             recipient.pubkey,
-            vaultTokenAccount:     vaultTokenAta,
+            employer: schedule.employer,
+            schedule: schedule.pubkey,
+            recipient: recipient.pubkey,
+            vaultTokenAccount: vaultTokenAta,
             recipientTokenAccount: recipientAta,
-            feeCollector:          feeCollectorAta,
+            feeCollector: feeCollectorAta,
             keshMint,
-            tokenProgram:          TOKEN_PROGRAM_ID,
+            tokenProgram: TOKEN_PROGRAM_ID,
           })
           .signers([operator])
           .rpc();
@@ -284,8 +284,8 @@ export function startPayrollCrank(
 export function getPayrollCrankStats() {
   const db = getDb();
   return {
-    total_runs:       (db.prepare("SELECT COUNT(*) AS c FROM payroll_runs").get() as any).c,
-    last_run:         (db.prepare("SELECT run_at FROM payroll_runs ORDER BY id DESC LIMIT 1").get() as any)?.run_at ?? null,
-    schedule:         process.env.PAYROLL_CRANK_SCHEDULE || "*/60 * * * * *",
+    total_runs: (db.prepare("SELECT COUNT(*) AS c FROM payroll_runs").get() as any).c,
+    last_run: (db.prepare("SELECT run_at FROM payroll_runs ORDER BY id DESC LIMIT 1").get() as any)?.run_at ?? null,
+    schedule: process.env.PAYROLL_CRANK_SCHEDULE || "*/60 * * * * *",
   };
 }

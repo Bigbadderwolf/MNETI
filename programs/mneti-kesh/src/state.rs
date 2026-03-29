@@ -74,6 +74,7 @@ pub struct BridgeDeposit {
     pub rate_at_mint: u64,
     pub operator:     Pubkey,
     pub created_at:   i64,
+    pub is_minted:    bool,
     pub bump:         u8,
 }
 
@@ -81,7 +82,7 @@ impl BridgeDeposit {
     pub const LEN: usize = 8
         + (4 + 20) + 32
         + 8 + 8 + 8 + 8
-        + 32 + 8 + 1;
+        + 32 + 8 + 1 + 1;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]

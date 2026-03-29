@@ -26,4 +26,6 @@ pub enum KeshError {
     InvalidMpesaReference,
     #[msg("Invalid parameter")]
     InvalidParameter,
+    #[msg("Bridge deposit already minted")]
+    AlreadyMinted,
 }

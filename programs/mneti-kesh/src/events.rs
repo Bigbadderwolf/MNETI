@@ -1,6 +1,17 @@
 use anchor_lang::prelude::*;
 
 #[event]
+pub struct BridgeDepositCreated {
+    pub wallet:      Pubkey,
+    pub mpesa_ref:   String,
+    pub kes_amount:  u64,
+    pub kesh_to_mint: u64,
+    pub rate_used:   u64,
+    pub fee_charged: u64,
+    pub timestamp:   i64,
+}
+
+#[event]
 pub struct KeshMinted {
     pub wallet:      Pubkey,
     pub mpesa_ref:   String,
